@@ -7,5 +7,5 @@ Bezier Surgeon is a Robofont extension for precision point addition. Select the 
 by Connor Davenport
 www.connordavenport.com/
 
-Thanks to Tal, Erik, Frederik, Bahman and Jens!
+Thanks to Tal, Erik, Frederik, Bahman, and Jens!
 
