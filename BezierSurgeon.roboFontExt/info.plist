@@ -20,7 +20,7 @@
 	<key>launchAtStartUp</key>
 	<true/>
 	<key>mainScript</key>
-	<string>/Users/connordavenport/Dropbox (Personal)/Typefaces/Scripts/ObtuseBois/BezierSurgeon/lib/BezierSurgeon.py</string>
+	<string>BezierSurgeon.py</string>
 	<key>name</key>
 	<string>Bezier Surgeon</string>
 	<key>requiresVersionMajor</key>
