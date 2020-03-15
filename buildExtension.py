@@ -15,7 +15,7 @@ B.name = "Bezier Surgeon"
 B.version = "0.1"
 B.developer = "Connor Davenport"
 B.developerURL = 'http://www.connordavenport.com/'
-B.mainScript = os.path.join(libPath, "BezierSurgeon.py")
+B.mainScript = "BezierSurgeon.py"
 B.launchAtStartUp = True
 B.addToMenu = [
     {
