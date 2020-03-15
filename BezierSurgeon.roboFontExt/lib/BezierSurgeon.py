@@ -21,7 +21,7 @@ class BezierSurgeon(BaseWindowController):
 
     def __init__(self):
 
-        self.w = HUDFloatingWindow((500, 100, 200, 60), "BezierSurgeon", closable=False)
+        self.w = HUDFloatingWindow((self.getWindowPostition()[0] + 25, self.getWindowPostition()[1] + 25 , 200, 60), "BezierSurgeon", closable=False)
         self.w.getNSWindow().setTitleVisibility_(True)
         self.w.getNSWindow().setTitlebarAppearsTransparent_(True)
         self.w.sliderVal = Slider(
@@ -52,6 +52,20 @@ class BezierSurgeon(BaseWindowController):
 
         self.removeObservers()
         UpdateCurrentGlyphView()
+        
+
+    def getWindowPostition(self):
+        # Code from Tal
+        # https://forum.robofont.com/topic/573/automatic-statusinteractivepopupwindow-positioning
+        if not CurrentGlyphWindow():
+            return
+        nsWindow = CurrentGlyphWindow().w.getNSWindow()
+        scrollView = CurrentGlyphWindow().getGlyphView().enclosingScrollView()
+        rectInWindowCoords = scrollView.convertRect_toView_(scrollView.frame(), None)
+        rectInScreenCoords = nsWindow.convertRectToScreen_(rectInWindowCoords)
+        (x, y), (w, h) = rectInScreenCoords
+        y = -(y + h)
+        return x, y
         
 
     def returnSelectedContour(self,glyph):
