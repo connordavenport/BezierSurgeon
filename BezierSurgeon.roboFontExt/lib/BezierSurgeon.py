@@ -3,7 +3,7 @@ import math
 import mojo.drawingTools as d
 from mojo.events import addObserver, removeObserver, EditingTool, installTool
 from defconAppKit.windows.baseWindow import BaseWindowController
-from mojo.UI import Message, getDefault, CurrentGlyphWindow, UpdateCurrentGlyphView
+from mojo.UI import Message, getDefault, CurrentGlyphWindow, UpdateCurrentGlyphView, getGlyphViewDisplaySettings
 from vanilla import HUDFloatingWindow, Slider, SquareButton,Group
 from defcon import Contour, Font
 import AppKit
@@ -21,7 +21,7 @@ class BezierSurgeon(BaseWindowController):
 
     def __init__(self):
 
-        self.w = HUDFloatingWindow((self.getWindowPostition()[0] + 25, self.getWindowPostition()[1] + 25 , 200, 60), "BezierSurgeon", closable=False)
+        self.w = HUDFloatingWindow((self.getWindowPostition()[0], self.getWindowPostition()[1], 200, 60), "BezierSurgeon", closable=False)
         self.w.getNSWindow().setTitleVisibility_(True)
         self.w.getNSWindow().setTitlebarAppearsTransparent_(True)
         self.w.sliderVal = Slider(
@@ -65,9 +65,15 @@ class BezierSurgeon(BaseWindowController):
         rectInScreenCoords = nsWindow.convertRectToScreen_(rectInWindowCoords)
         (x, y), (w, h) = rectInScreenCoords
         y = -(y + h)
-        return x, y
-        
 
+        if getGlyphViewDisplaySettings()['Rulers']:
+            offset = 30
+        else:
+            offset = 10
+
+        return x + offset, y + offset
+        
+        
     def returnSelectedContour(self,glyph):
 
         if glyph.contours:

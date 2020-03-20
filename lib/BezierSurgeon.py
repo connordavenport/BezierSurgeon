@@ -73,6 +73,7 @@ class BezierSurgeon(BaseWindowController):
 
         return x + offset, y + offset
         
+        
     def returnSelectedContour(self,glyph):
 
         if glyph.contours:
