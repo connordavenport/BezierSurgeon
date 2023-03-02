@@ -12,7 +12,7 @@ libPath = os.path.join(basePath, "lib")
 B = ExtensionBundle()
 
 B.name = "Bezier Surgeon"
-B.version = "2.000"
+B.version = "2.001"
 B.developer = "Connor Davenport"
 B.developerURL = 'http://www.connordavenport.com/'
 B.mainScript = "BezierSurgeon.py"

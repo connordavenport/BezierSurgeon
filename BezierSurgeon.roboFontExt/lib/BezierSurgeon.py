@@ -1,18 +1,17 @@
-from fontTools.misc import bezierTools as bT
-import math
-import mojo.drawingTools as d
-from lib.tools.notifications import PostNotification
-from mojo.events import addObserver, removeObserver, EditingTool, installTool, BaseEventTool
-from defconAppKit.windows.baseWindow import BaseWindowController
-from mojo.UI import PostBannerNotification, getDefault, setDefault, CurrentGlyphWindow, UpdateCurrentGlyphView, getGlyphViewDisplaySettings, setGlyphViewDisplaySettings, preferencesChanged
-from vanilla import HUDFloatingWindow, Slider, SquareButton,Group
-from defcon import Contour, Font
 import AppKit
+from defcon import Contour, Font
+from defconAppKit.windows.baseWindow import BaseWindowController
 from fontParts.fontshell import RBPoint
-
-import merz
-from mojo.subscriber import Subscriber, WindowController, registerCurrentGlyphSubscriber
+from fontTools.misc import bezierTools as bT
+from lib.tools.notifications import PostNotification
 from merz.tools.drawingTools import NSImageDrawingTools
+import math
+import merz
+from mojo.UI import PostBannerNotification, getDefault, setDefault, CurrentGlyphWindow, UpdateCurrentGlyphView, getGlyphViewDisplaySettings, setGlyphViewDisplaySettings, preferencesChanged
+from mojo.events import addObserver, removeObserver, EditingTool, installTool, BaseEventTool
+from mojo.subscriber import Subscriber, WindowController, registerCurrentGlyphSubscriber
+from vanilla import HUDFloatingWindow, Slider, SquareButton,Group
+
 
 '''
 to do:
@@ -54,20 +53,26 @@ class BezierSurgeon(EditingTool):
         self.percent = 0.5
         self.point = None
         self.duration = .8
-
+        self.upmScale = None
+        if AppKit.NSApp().appearance() == AppKit.NSAppearance.appearanceNamed_(AppKit.NSAppearanceNameDarkAqua):
+            self.mode = "dark"
+            self.suffix = ".dark"
+        else:
+            self.mode = "light"
+            self.suffix = ""
+            
         self.onCurveSize = getDefault("glyphViewOncurvePointsSize") * 2.2
         self.offCurveSize = getDefault("glyphViewOncurvePointsSize") * 2
-        self.onCurveFill = tuple([i for i in getDefault("glyphViewCurvePointsFill")])
-        self.onCurveStroke = tuple([i for i in getDefault("glyphViewSmoothPointStroke")])
-        self.offCurveFill = tuple([i for i in getDefault("glyphViewOffCurvePointsFill")])
-        self.offCurveStroke = tuple([i for i in getDefault("glyphViewOffCurvePointsStroke")])
-        self.handleStroke = [i for i in getDefault("glyphViewHandlesStrokeColor")]
+        self.onCurveFill = self.getModeColor("glyphViewCurvePointsFill",self.suffix)
+        self.onCurveStroke = self.getModeColor("glyphViewSmoothPointStroke",self.suffix)
+        self.offCurveFill = self.getModeColor("glyphViewOffCurvePointsFill",self.suffix)
+        self.offCurveStroke = self.getModeColor("glyphViewOffCurveCubicPointsStroke",self.suffix)
+        self.handleStroke = list(self.getModeColor("glyphViewHandlesStrokeColor",self.suffix))
         self.handleStroke[3] = .8
         self.handleStroke = tuple(self.handleStroke)
         self.handleWidth = getDefault("glyphViewHandlesStrokeWidth") * .4
         self.strokeWidth = getDefault("glyphViewStrokeWidth")
-    
-        
+            
         foregroundLayer = self.extensionContainer(
             identifier="com.roboFont.BezierSurgeon.foreground",
             location='foreground',
@@ -86,6 +91,11 @@ class BezierSurgeon(EditingTool):
            fillColor=(1, 1, 1, 1),
            horizontalAlignment="center"
         )
+
+        self.scaleLayer = foregroundLayer.appendPathSublayer(
+            fillColor=None,
+            strokeColor=None
+        )
         
         self.handleLayer = backgroundLayer.appendPathSublayer(
             fillColor=None,
@@ -99,10 +109,10 @@ class BezierSurgeon(EditingTool):
 
         self.pointInsertionLayer = foregroundLayer.appendBaseSublayer()
         
-        self.handleLayer.setVisible(True)
-        self.captionTextLayer.setVisible(True)
-
         self.addObservers()
+
+        # self.handleLayer.setVisible(True)
+        # self.captionTextLayer.setVisible(True)
 
 
     # def destroy(self):
@@ -110,33 +120,38 @@ class BezierSurgeon(EditingTool):
         
 # ---------------------------------        
 # ---------------------------------        
-        
-    def setDefaultCustom(self,keys,value):
-        setDefault(keys,value)
-        preferencesChanged()
+
 
     def addObservers(self):
-        self.offCurvesViz = getGlyphViewDisplaySettings()['OffCurvePoints']
-        self.selectionColor = tuple([i for i in getDefault("glyphViewSelectionColor")])
-        self.setDefaultCustom("glyphViewSelectionColor", (0,0,0,0))
-        setGlyphViewDisplaySettings({'OffCurvePoints':False})
         self.drawPoints()
-        UpdateCurrentGlyphView()
+        self.offCurvesViz = getGlyphViewDisplaySettings()['OffCurvePoints']
+        self.selectionColor = self.getModeColor("glyphViewSelectionColor",self.suffix)
+        #self.selectionColor = tuple([i for i in getDefault(f"glyphViewSelectionColor{self.suffix}")])
+        setDefault(f"glyphViewSelectionColor{self.suffix}", (0,0,0,0), validate=True)
+        preferencesChanged()
+        preferencesChanged()
+        # for some reason I need to post it twice to trigger a current selection's color
+        setGlyphViewDisplaySettings({'OffCurvePoints':False})
+        #UpdateCurrentGlyphView()
         
     def removeObservers(self):
         if self.selectionColor:
             selectionColor = self.selectionColor
         else:
             selectionColor = (1,0,0,1)
-        self.setDefaultCustom("glyphViewSelectionColor", selectionColor)
+        setDefault(f"glyphViewSelectionColor{self.suffix}", selectionColor, validate=True)
+        preferencesChanged()
+        preferencesChanged()
+        # for some reason I need to post it twice to trigger a current selection's color
         setGlyphViewDisplaySettings({'OffCurvePoints':True})
 
-    def closeWindow(self, sender):        
+    def closeWindow(self, sender):     
         self.removeObservers()
         self.handleLayer.clearSublayers()
         self.captionTextLayer.clearSublayers()
         self.ovalCurveLayer.clearSublayers()
         self.pointInsertionLayer.clearSublayers()
+        self.scaleLayer.clearSublayers()
         UpdateCurrentGlyphView()
 
     def mouseDragged(self, point=None, delta=None):
@@ -144,6 +159,7 @@ class BezierSurgeon(EditingTool):
         self.captionTextLayer.clearSublayers()
         self.ovalCurveLayer.clearSublayers()
         self.pointInsertionLayer.clearSublayers()
+        self.scaleLayer.clearSublayers()
         if self.segmentPoints:
             minX, minY, maxX, maxY  = self.getSegmentBounds(self.segmentPoints)
             scale = self.glyph.font.info.unitsPerEm/1000
@@ -162,6 +178,19 @@ class BezierSurgeon(EditingTool):
                 per = 1.0 - per
             self.percent = per
         self.drawPoints()
+        
+    def getModeColor(self,key,suffix):
+        trySuff = suffix
+        if not getDefault(f"{key}{suffix}"):
+            if suffix == ".dark":
+                trySuff = ""
+            if not getDefault(f"{key}{trySuff}"):
+                #return a fallback color
+                return (.5,.5,.5,.5)
+            else:
+                return tuple([i for i in getDefault(f"{key}{trySuff}")])
+        else:
+            return tuple([i for i in getDefault(f"{key}{suffix}")])
         
     def returnSelectedContour(self,glyph):
         if glyph.contours:
@@ -290,10 +319,11 @@ class BezierSurgeon(EditingTool):
                             if font != self.glyph.font:
                                 with font[self.glyph.name].undo():
                                     otherContour = font[self.glyph.name].contours[self.selectedContourIndex]
-                                    self.playPointAnimation(self.point,10)
                                     otherContour.naked().splitAndInsertPointAtSegmentAndT(self.selectedSegmentIndex, otherAngleT)
                             else:
                                 with self.glyph.undo():
+                                    self.playPointAnimation(self.point,5)
+                                    self.playPointAnimation(self.point,8)
                                     contour.naked().splitAndInsertPointAtSegmentAndT(self.selectedSegmentIndex, self.percent)
                                 
 
@@ -303,11 +333,12 @@ class BezierSurgeon(EditingTool):
                             if font != self.glyph.font:
                                 with font[self.glyph.name].undo():
                                     otherContour = font[self.glyph.name].contours[self.selectedContourIndex]
-                                    self.playPointAnimation(self.point,10)
                                     otherContour.naked().splitAndInsertPointAtSegmentAndT(self.selectedSegmentIndex, otherRatioT)
                             else:
                                 with self.glyph.undo():
                                     self.selectedSegmentIndex = contour.selectedSegments[0].index
+                                    self.playPointAnimation(self.point,5)
+                                    self.playPointAnimation(self.point,8)
                                     contour.naked().splitAndInsertPointAtSegmentAndT(self.selectedSegmentIndex, self.percent)
                             
                     else:
@@ -320,7 +351,8 @@ class BezierSurgeon(EditingTool):
                     else:
                         with self.glyph.undo():
                             PostBannerNotification("BezierSurgeon", f"Inserting point in CurrentGlyph at {currentAngle}° and {currentRatio}")
-                            self.playPointAnimation(self.point,10)
+                            self.playPointAnimation(self.point,5)
+                            self.playPointAnimation(self.point,8)
                             contour.naked().splitAndInsertPointAtSegmentAndT(contour.selectedSegments[0].index, self.percent)
 
 
@@ -340,10 +372,11 @@ class BezierSurgeon(EditingTool):
                             if font != self.glyph.font:
                                 with font[self.glyph.name].undo():
                                     otherContour = font[self.glyph.name].contours[self.selectedContourIndex]
-                                    self.playPointAnimation(self.point,10)
                                     otherContour.naked().splitAndInsertPointAtSegmentAndT(self.selectedSegmentIndex, otherRatioT)
                             else:
                                 with self.glyph.undo():
+                                    self.playPointAnimation(self.point,5)
+                                    self.playPointAnimation(self.point,8)
                                     self.selectedSegmentIndex = contour.selectedSegments[0].index
                                     contour.naked().splitAndInsertPointAtSegmentAndT(self.selectedSegmentIndex, self.percent)
 
@@ -351,7 +384,14 @@ class BezierSurgeon(EditingTool):
 
     def drawPoints(self):
         self.glyph = CurrentGlyph()
-        upmScale = (self.glyph.font.info.unitsPerEm/1000) 
+        
+        if "qcurve" in [p.type for c in self.glyph.contours for p in c.points]:
+            curveType = "Quad"
+        else:
+            curveType = "Cubic"
+        self.offCurveStroke = self.getModeColor(f"glyphViewOffCurve{curveType}PointsStroke",self.suffix)
+        
+        self.upmScale = (self.glyph.font.info.unitsPerEm/1000) 
 
         if self.segmentPoints:
             fsp = [(float(sgp[0]),float(sgp[1])) for sgp in self.segmentPoints]
@@ -362,10 +402,11 @@ class BezierSurgeon(EditingTool):
         newPoints = self.getValues(None,fsp,self.percent)
         if newPoints != None:
             # thanks Erik!
-            textLoc = newPoints[0][3][0] + math.cos(self.returnAngles(newPoints,10)[0]) * (.25*80*upmScale) * 2, newPoints[0][3][1] + math.sin(self.returnAngles(newPoints,10)[0]) * (.25*80*upmScale) * 2
+            textLoc = newPoints[0][3][0] + math.cos(self.returnAngles(newPoints,10)[0]) * (.25*80*self.upmScale) * 2, newPoints[0][3][1] + math.sin(self.returnAngles(newPoints,10)[0]) * (.25*80*self.upmScale) * 2
             ratioFormat = "{:.2f}".format(round(self.returnRatio(newPoints),2))
             angleFormat = "{:.2f}".format(self.returnAngles(newPoints,2)[1])
             self.caption(textLoc, f'{angleFormat}° \n{ratioFormat}', (.5, 0,  1, 0.8))
+            # self.drawScales((textLoc[0],textLoc[1]+60), (.5, 0,  1, 0.8), self.percent)
 
         if self.glyph:
             for contour in self.glyph.contours:
@@ -421,6 +462,7 @@ class BezierSurgeon(EditingTool):
     def playPointAnimation(self, location, size):
         x, y = location
 
+        size *= self.upmScale
         pathLayer = self.pointInsertionLayer.appendBaseSublayer(
             position=((x-size/2, y-size/2)),
             size=(size, size),
@@ -473,18 +515,79 @@ class BezierSurgeon(EditingTool):
         )
 
     def caption(self, location, text, color):
+        
+        if self.mode == "dark":
+            backColor = color
+            frColor = (1,1,1,1)
+        else:
+            backColor = (.5, 0,  1, 0.2)
+            frColor = color
+            
         self.captionTextLayer.appendTextLineSublayer(
            position=location,
            pointSize=int(getDefault('textFontSize')) + 2,
-           backgroundColor=(.5, 0,  1, 0.2),
+           backgroundColor=backColor,
            text=f"{text}",
-           fillColor=color,
+           fillColor=frColor,
            horizontalAlignment="center",
            verticalAlignment="bottom",
            weight='bold',
            figureStyle='tabular',
            padding=(10,10),
            cornerRadius = 5
+        )
+
+
+    def interpolatePoints(self, a, b, v):
+        x = a[0] + v * (b[0] - a[0])
+        y = a[1] + v * (b[1] - a[1])
+        return (x,y)
+
+
+    def drawScales(self, location, color, tValue):
+        x,y = location
+        start,end = (x-50,y),(x+50,y)
+
+        dot = self.interpolatePoints(end,start,tValue)
+
+        self.scaleLayer.appendLineSublayer(
+           startPoint = start,
+           endPoint = end,
+           strokeWidth = 2,
+           strokeColor = color
+        )
+
+        startDot = self.scaleLayer.appendSymbolSublayer(
+            position=start,
+            imageSettings=dict(
+                name="oval",
+                size=(6,6),
+                fillColor = color,
+                strokeColor = color,
+                strokeWidth = 2,
+            )
+        )
+
+        endDot = self.scaleLayer.appendSymbolSublayer(
+            position=end,
+            imageSettings=dict(
+                name="oval",
+                size=(6,6),
+                fillColor = color,
+                strokeColor = color,
+                strokeWidth = 2,
+            )
+        )
+
+        endDot = self.scaleLayer.appendSymbolSublayer(
+            position=dot,
+            imageSettings=dict(
+                name="oval",
+                size=(6,6),
+                fillColor = color,
+                strokeColor = color,
+                strokeWidth = 2,
+            )
         )
 
 
