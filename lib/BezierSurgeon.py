@@ -54,20 +54,25 @@ class BezierSurgeon(EditingTool):
         self.point = None
         self.duration = .8
         self.upmScale = None
-
+        if AppKit.NSApp().appearance() == AppKit.NSAppearance.appearanceNamed_(AppKit.NSAppearanceNameDarkAqua):
+            self.mode = "dark"
+            self.suffix = ".dark"
+        else:
+            self.mode = "light"
+            self.suffix = ""
+            
         self.onCurveSize = getDefault("glyphViewOncurvePointsSize") * 2.2
         self.offCurveSize = getDefault("glyphViewOncurvePointsSize") * 2
-        self.onCurveFill = tuple([i for i in getDefault("glyphViewCurvePointsFill")])
-        self.onCurveStroke = tuple([i for i in getDefault("glyphViewSmoothPointStroke")])
-        self.offCurveFill = tuple([i for i in getDefault("glyphViewOffCurvePointsFill")])
-        self.offCurveStroke = tuple([i for i in getDefault("glyphViewOffCurvePointsStroke")])
-        self.handleStroke = [i for i in getDefault("glyphViewHandlesStrokeColor")]
+        self.onCurveFill = self.getModeColor("glyphViewCurvePointsFill",self.suffix)
+        self.onCurveStroke = self.getModeColor("glyphViewSmoothPointStroke",self.suffix)
+        self.offCurveFill = self.getModeColor("glyphViewOffCurvePointsFill",self.suffix)
+        self.offCurveStroke = self.getModeColor("glyphViewOffCurveCubicPointsStroke",self.suffix)
+        self.handleStroke = list(self.getModeColor("glyphViewHandlesStrokeColor",self.suffix))
         self.handleStroke[3] = .8
         self.handleStroke = tuple(self.handleStroke)
         self.handleWidth = getDefault("glyphViewHandlesStrokeWidth") * .4
         self.strokeWidth = getDefault("glyphViewStrokeWidth")
-    
-        
+            
         foregroundLayer = self.extensionContainer(
             identifier="com.roboFont.BezierSurgeon.foreground",
             location='foreground',
@@ -104,10 +109,10 @@ class BezierSurgeon(EditingTool):
 
         self.pointInsertionLayer = foregroundLayer.appendBaseSublayer()
         
+        self.addObservers()
+
         # self.handleLayer.setVisible(True)
         # self.captionTextLayer.setVisible(True)
-
-        self.addObservers()
 
 
     # def destroy(self):
@@ -115,28 +120,32 @@ class BezierSurgeon(EditingTool):
         
 # ---------------------------------        
 # ---------------------------------        
-        
-    def setDefaultCustom(self,keys,value):
-        setDefault(keys,value)
-        preferencesChanged()
+
 
     def addObservers(self):
-        self.offCurvesViz = getGlyphViewDisplaySettings()['OffCurvePoints']
-        self.selectionColor = tuple([i for i in getDefault("glyphViewSelectionColor")])
-        self.setDefaultCustom("glyphViewSelectionColor", (0,0,0,0))
-        setGlyphViewDisplaySettings({'OffCurvePoints':False})
         self.drawPoints()
-        UpdateCurrentGlyphView()
+        self.offCurvesViz = getGlyphViewDisplaySettings()['OffCurvePoints']
+        self.selectionColor = self.getModeColor("glyphViewSelectionColor",self.suffix)
+        #self.selectionColor = tuple([i for i in getDefault(f"glyphViewSelectionColor{self.suffix}")])
+        setDefault(f"glyphViewSelectionColor{self.suffix}", (0,0,0,0), validate=True)
+        preferencesChanged()
+        preferencesChanged()
+        # for some reason I need to post it twice to trigger a current selection's color
+        setGlyphViewDisplaySettings({'OffCurvePoints':False})
+        #UpdateCurrentGlyphView()
         
     def removeObservers(self):
         if self.selectionColor:
             selectionColor = self.selectionColor
         else:
             selectionColor = (1,0,0,1)
-        self.setDefaultCustom("glyphViewSelectionColor", selectionColor)
+        setDefault(f"glyphViewSelectionColor{self.suffix}", selectionColor, validate=True)
+        preferencesChanged()
+        preferencesChanged()
+        # for some reason I need to post it twice to trigger a current selection's color
         setGlyphViewDisplaySettings({'OffCurvePoints':True})
 
-    def closeWindow(self, sender):        
+    def closeWindow(self, sender):     
         self.removeObservers()
         self.handleLayer.clearSublayers()
         self.captionTextLayer.clearSublayers()
@@ -169,6 +178,19 @@ class BezierSurgeon(EditingTool):
                 per = 1.0 - per
             self.percent = per
         self.drawPoints()
+        
+    def getModeColor(self,key,suffix):
+        trySuff = suffix
+        if not getDefault(f"{key}{suffix}"):
+            if suffix == ".dark":
+                trySuff = ""
+            if not getDefault(f"{key}{trySuff}"):
+                #return a fallback color
+                return (.5,.5,.5,.5)
+            else:
+                return tuple([i for i in getDefault(f"{key}{trySuff}")])
+        else:
+            return tuple([i for i in getDefault(f"{key}{suffix}")])
         
     def returnSelectedContour(self,glyph):
         if glyph.contours:
@@ -362,6 +384,13 @@ class BezierSurgeon(EditingTool):
 
     def drawPoints(self):
         self.glyph = CurrentGlyph()
+        
+        if "qcurve" in [p.type for c in self.glyph.contours for p in c.points]:
+            curveType = "Quad"
+        else:
+            curveType = "Cubic"
+        self.offCurveStroke = self.getModeColor(f"glyphViewOffCurve{curveType}PointsStroke",self.suffix)
+        
         self.upmScale = (self.glyph.font.info.unitsPerEm/1000) 
 
         if self.segmentPoints:
@@ -486,12 +515,20 @@ class BezierSurgeon(EditingTool):
         )
 
     def caption(self, location, text, color):
+        
+        if self.mode == "dark":
+            backColor = color
+            frColor = (1,1,1,1)
+        else:
+            backColor = (.5, 0,  1, 0.2)
+            frColor = color
+            
         self.captionTextLayer.appendTextLineSublayer(
            position=location,
            pointSize=int(getDefault('textFontSize')) + 2,
-           backgroundColor=(.5, 0,  1, 0.2),
+           backgroundColor=backColor,
            text=f"{text}",
-           fillColor=color,
+           fillColor=frColor,
            horizontalAlignment="center",
            verticalAlignment="bottom",
            weight='bold',
