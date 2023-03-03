@@ -121,29 +121,11 @@ class BezierSurgeon(EditingTool):
 
     def addObservers(self):
         self.drawPoints()
-        self.offCurvesViz = getGlyphViewDisplaySettings()['OffCurvePoints']
-        self.selectionColor = self.getModeColor("glyphViewSelectionColor",self.suffix)
-        #self.selectionColor = tuple([i for i in getDefault(f"glyphViewSelectionColor{self.suffix}")])
-        setDefault(f"glyphViewSelectionColor{self.suffix}", (0,0,0,0), validate=True)
-        preferencesChanged()
-        preferencesChanged()
-        # for some reason I need to post it twice to trigger a current selection's color
         setGlyphViewDisplaySettings({'OffCurvePoints':False})
-        #UpdateCurrentGlyphView()
         
-    def removeObservers(self):
-        if self.selectionColor:
-            selectionColor = self.selectionColor
-        else:
-            selectionColor = (1,0,0,1)
-        setDefault(f"glyphViewSelectionColor{self.suffix}", selectionColor, validate=True)
-        preferencesChanged()
-        preferencesChanged()
-        # for some reason I need to post it twice to trigger a current selection's color
-        setGlyphViewDisplaySettings({'OffCurvePoints':True})
 
     def closeWindow(self, sender):     
-        self.removeObservers()
+        setGlyphViewDisplaySettings({'OffCurvePoints':True})
         self.handleLayer.clearSublayers()
         self.captionTextLayer.clearSublayers()
         self.ovalCurveLayer.clearSublayers()
@@ -618,6 +600,8 @@ class BezierSurgeon(EditingTool):
     def canSelectWithMarque(self):
         return False
         
+    def shouldShowSelection(self):
+        return False
     
 if __name__ == '__main__':
     BezierSurgeon = BezierSurgeon()
