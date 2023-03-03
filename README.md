@@ -16,4 +16,4 @@ Requires RoboFont 4.1
 ![](./images/BezierSurgeon.gif)
 
 
-Thanks to Tal, Erik, Frederik, Gustavo, Bahman, and Jens!
+Thanks to Tal, Erik, Frederik, DJR, Gustavo, Bahman, and Jens!
