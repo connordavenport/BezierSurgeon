@@ -153,7 +153,7 @@ class BezierSurgeon(EditingTool):
         self.pointInsertionLayer.clearSublayers()
         self.scaleLayer.clearSublayers()
         UpdateCurrentGlyphView()
-
+    
     def mouseDragged(self, point=None, delta=None):
         self.handleLayer.clearSublayers()
         self.captionTextLayer.clearSublayers()
@@ -200,9 +200,7 @@ class BezierSurgeon(EditingTool):
 
     def returnSelectedSegment(self,glyph):
         contour = self.returnSelectedContour(glyph)
-        if contour == None:
-            pass
-        else:
+        if len(glyph.selectedPoints) > 1:
             return contour.selectedSegments[0]
 
     def returnSelectedPointsInSegment(self,glyph):
@@ -237,10 +235,8 @@ class BezierSurgeon(EditingTool):
     def getValues(self,glyph,segPoints,tVal):
         if glyph:
             glyph = glyph
-            other = True
         else:
             glyph = CurrentGlyph()
-            other = False
             self.segmentPoints = self.returnSelectedPointsInSegment(glyph)
             segPoints = self.segmentPoints
 
@@ -257,22 +253,27 @@ class BezierSurgeon(EditingTool):
         return minX, minY, maxX, maxY 
 
     def returnRatio(self,cs):
-        left = self.calculateDistance(cs[0][2][0], cs[0][2][1], cs[0][3][0], cs[0][3][1])
-        right = self.calculateDistance(cs[1][1][0], cs[1][1][1], cs[1][0][0], cs[1][0][1])
+        aptx, apty = cs[0][2]
+        bptx, bpty = cs[0][-1]
+        cptx, cpty = cs[1][1]
+        
+        left = math.hypot(aptx-bptx,apty-bpty)
+        right = math.hypot(cptx-bptx,cpty-bpty)
         if right == 0:
             ratio = 0.0
         else:
-            ratio = round(left/right,3) 
+            ratio = round(left/right,2) 
         return ratio
 
     def returnAngles(self,cs,roundValue):
-        rawAngle = math.atan2(cs[0][2][1]-cs[1][1][1], cs[0][2][0]-cs[1][1][0]) + .5 * math.pi
-        fixedAngle = round( abs( math.degrees( rawAngle ) ) % 180, roundValue)
+        aptx, apty = cs[0][2]
+        bptx, bpty = cs[0][-1]
+        cptx, cpty = cs[1][1]
+        rawAngle = math.atan2(apty-cpty,aptx-cptx) + .5 * math.pi
+        degrees = math.degrees(rawAngle)%180
+        fixedAngle = round(degrees, roundValue)
         return rawAngle, fixedAngle
-        
-    def calculateDistance(self,x1,y1,x2,y2):  
-        dist = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)  
-        return dist  
+
 
     def checkCompatible(self, fontLists):
         return [fs for fs in fontLists if self.glyph.isCompatible(fs[self.glyph.name]) and (len([point for contour in self.glyph.contours for point in contour.points]) == len([point for contour in fs[self.glyph.name].contours for point in contour.points]))]
@@ -284,101 +285,111 @@ class BezierSurgeon(EditingTool):
         return {(a/100) : round(self.returnRatio( self.getValues(font[self.glyph.name], segPoints, (a/100))),2) for a in range(100)} 
   
     
+    def didUndo(self,notification):
+        # only way I can figure out to reset the lonely points:)
+        self.handleLayer.clearSublayers()
+        self.captionTextLayer.clearSublayers()
+        self.ovalCurveLayer.clearSublayers()
+        self.pointInsertionLayer.clearSublayers()
+        self.scaleLayer.clearSublayers()
+        self.drawPoints()
+        
     def keyDown(self, event):
         char = event.characters()
         self.glyph = CurrentGlyph()
         selectedContours = [c for c in self.glyph.contours if c.selection]
         
-        currentAngle = self.returnAngles(self.getValues([self.glyph], self.segmentPoints, self.percent),0)[1]
-        currentRatio = round(self.returnRatio(self.getValues([self.glyph], self.segmentPoints, self.percent)), 2)
+        if self.segmentPoints:
+            currentAngle = self.returnAngles(self.getValues([self.glyph], self.segmentPoints, self.percent),0)[1]
+            currentRatio = round(self.returnRatio(self.getValues([self.glyph], self.segmentPoints, self.percent)), 2)
         
-        if len(selectedContours) == 1:
-            contour = selectedContours[0]
-            if contour.selectedSegments:
-                self.selectedContourIndex = contour.index
-                self.selectedSegmentIndex = contour.selectedSegments[0].index
+            if len(selectedContours) == 1:
+                contour = selectedContours[0]
+                if contour.selectedSegments:
+                    self.selectedContourIndex = contour.index
+                    self.selectedSegmentIndex = contour.selectedSegments[0].index
 
-                # Insert point in all fonts
-                if char == "A":
-                    allAngles = {}
-                    allRatios = {}
-                    for font in self.checkCompatible(AllFonts()):
-                        otherSegmentPoints = self.returnCorrespondingPointsInSegment(self.glyph, font)
-                        if otherSegmentPoints:
-                            potAngles = self.getPotentialAngleMapping(otherSegmentPoints,font)
-                            potRatios = self.getPotentialRatioMapping(otherSegmentPoints,font)
-                            otherAngleT = potAngles.get(currentAngle)
-                            otherRatioT = min(potRatios.items(), key=lambda x: abs(currentRatio - x[1]))[0]
-                            allAngles[font] = otherAngleT
-                            allRatios[font] = otherRatioT
+                    # Insert point in all fonts
+                    if char == "A":
+                        allAngles = {}
+                        allRatios = {}
+                        for font in self.checkCompatible(AllFonts()):
+                            otherSegmentPoints = self.returnCorrespondingPointsInSegment(self.glyph, font)
+                            if otherSegmentPoints:
+                                potAngles = self.getPotentialAngleMapping(otherSegmentPoints,font)
+                                potRatios = self.getPotentialRatioMapping(otherSegmentPoints,font)
+                                otherAngleT = potAngles.get(currentAngle)
+                                otherRatioT = min(potRatios.items(), key=lambda x: abs(currentRatio - x[1]))[0]
+                                allAngles[font] = otherAngleT
+                                allRatios[font] = otherRatioT
                         
                 
-                    if None not in allAngles.values():
-                        PostBannerNotification("BezierSurgeon", f"Inserting point in AllFonts at an angle of {currentAngle}")
-                        for font,otherAngleT in allAngles.items():
-                            if font != self.glyph.font:
-                                with font[self.glyph.name].undo():
-                                    otherContour = font[self.glyph.name].contours[self.selectedContourIndex]
-                                    otherContour.naked().splitAndInsertPointAtSegmentAndT(self.selectedSegmentIndex, otherAngleT)
-                            else:
-                                with self.glyph.undo():
-                                    self.playPointAnimation(self.point,5)
-                                    self.playPointAnimation(self.point,8)
-                                    contour.naked().splitAndInsertPointAtSegmentAndT(self.selectedSegmentIndex, self.percent)
+                        if None not in allAngles.values():
+                            PostBannerNotification("BezierSurgeon", f"Inserting point in AllFonts at an angle of {currentAngle}")
+                            for font,otherAngleT in allAngles.items():
+                                if font != self.glyph.font:
+                                    with font[self.glyph.name].undo():
+                                        otherContour = font[self.glyph.name].contours[self.selectedContourIndex]
+                                        otherContour.naked().splitAndInsertPointAtSegmentAndT(self.selectedSegmentIndex, otherAngleT)
+                                else:
+                                    with self.glyph.undo():
+                                        self.playPointAnimation(self.point,5)
+                                        self.playPointAnimation(self.point,8)
+                                        contour.naked().splitAndInsertPointAtSegmentAndT(self.selectedSegmentIndex, self.percent)
                                 
 
-                    elif None not in allRatios.values():
-                        PostBannerNotification("BezierSurgeon", f"Inserting point in AllFonts at a ratio of {currentRatio}")
-                        for font,otherRatioT in allRatios.items():
-                            if font != self.glyph.font:
-                                with font[self.glyph.name].undo():
-                                    otherContour = font[self.glyph.name].contours[self.selectedContourIndex]
-                                    otherContour.naked().splitAndInsertPointAtSegmentAndT(self.selectedSegmentIndex, otherRatioT)
-                            else:
-                                with self.glyph.undo():
-                                    self.selectedSegmentIndex = contour.selectedSegments[0].index
-                                    self.playPointAnimation(self.point,5)
-                                    self.playPointAnimation(self.point,8)
-                                    contour.naked().splitAndInsertPointAtSegmentAndT(self.selectedSegmentIndex, self.percent)
+                        elif None not in allRatios.values():
+                            PostBannerNotification("BezierSurgeon", f"Inserting point in AllFonts at a ratio of {currentRatio}")
+                            for font,otherRatioT in allRatios.items():
+                                if font != self.glyph.font:
+                                    with font[self.glyph.name].undo():
+                                        otherContour = font[self.glyph.name].contours[self.selectedContourIndex]
+                                        otherContour.naked().splitAndInsertPointAtSegmentAndT(self.selectedSegmentIndex, otherRatioT)
+                                else:
+                                    with self.glyph.undo():
+                                        self.selectedSegmentIndex = contour.selectedSegments[0].index
+                                        self.playPointAnimation(self.point,5)
+                                        self.playPointAnimation(self.point,8)
+                                        contour.naked().splitAndInsertPointAtSegmentAndT(self.selectedSegmentIndex, self.percent)
                             
-                    else:
-                        PostBannerNotification("BezierSurgeon", f"Sorry, I cant insert a consistent point at either {currentAngle}° or a ratio of {currentRatio}")
+                        else:
+                            PostBannerNotification("BezierSurgeon", f"Sorry, I cant insert a consistent point at either {currentAngle}° or a ratio of {currentRatio}")
                                 
-                # Insert point in current glyph
-                elif char == "C":
-                    if len(contour.selectedSegments) != 1:
-                        print("only select one segment")
-                    else:
-                        with self.glyph.undo():
-                            PostBannerNotification("BezierSurgeon", f"Inserting point in CurrentGlyph at {currentAngle}° and {currentRatio}")
-                            self.playPointAnimation(self.point,5)
-                            self.playPointAnimation(self.point,8)
-                            contour.naked().splitAndInsertPointAtSegmentAndT(contour.selectedSegments[0].index, self.percent)
+                    # Insert point in current glyph
+                    elif char == "C":
+                        if len(contour.selectedSegments) != 1:
+                            print("only select one segment")
+                        else:
+                            with self.glyph.undo():
+                                PostBannerNotification("BezierSurgeon", f"Inserting point in CurrentGlyph at {currentAngle}° and {currentRatio}")
+                                self.playPointAnimation(self.point,5)
+                                self.playPointAnimation(self.point,8)
+                                contour.naked().splitAndInsertPointAtSegmentAndT(contour.selectedSegments[0].index, self.percent)
 
 
-                # Insert point in all fonts at specified ratio
-                elif char == "R":
-                    allRatios = {}
-                    for font in self.checkCompatible(AllFonts()):
-                        otherSegmentPoints = self.returnCorrespondingPointsInSegment(self.glyph, font)
-                        if otherSegmentPoints:
-                            potRatios = self.getPotentialRatioMapping(otherSegmentPoints,font)
-                            otherRatioT = min(potRatios.items(), key=lambda x: abs(currentRatio - x[1]))[0]
-                            allRatios[font] = otherRatioT
+                    # Insert point in all fonts at specified ratio
+                    elif char == "R":
+                        allRatios = {}
+                        for font in self.checkCompatible(AllFonts()):
+                            otherSegmentPoints = self.returnCorrespondingPointsInSegment(self.glyph, font)
+                            if otherSegmentPoints:
+                                potRatios = self.getPotentialRatioMapping(otherSegmentPoints,font)
+                                otherRatioT = min(potRatios.items(), key=lambda x: abs(currentRatio - x[1]))[0]
+                                allRatios[font] = otherRatioT
 
-                    if None not in allRatios.values():
-                        PostBannerNotification("BezierSurgeon", f"Inserting point in AllFonts at a ratio of {currentRatio}")
-                        for font,otherRatioT in allRatios.items():
-                            if font != self.glyph.font:
-                                with font[self.glyph.name].undo():
-                                    otherContour = font[self.glyph.name].contours[self.selectedContourIndex]
-                                    otherContour.naked().splitAndInsertPointAtSegmentAndT(self.selectedSegmentIndex, otherRatioT)
-                            else:
-                                with self.glyph.undo():
-                                    self.playPointAnimation(self.point,5)
-                                    self.playPointAnimation(self.point,8)
-                                    self.selectedSegmentIndex = contour.selectedSegments[0].index
-                                    contour.naked().splitAndInsertPointAtSegmentAndT(self.selectedSegmentIndex, self.percent)
+                        if None not in allRatios.values():
+                            PostBannerNotification("BezierSurgeon", f"Inserting point in AllFonts at a ratio of {currentRatio}")
+                            for font,otherRatioT in allRatios.items():
+                                if font != self.glyph.font:
+                                    with font[self.glyph.name].undo():
+                                        otherContour = font[self.glyph.name].contours[self.selectedContourIndex]
+                                        otherContour.naked().splitAndInsertPointAtSegmentAndT(self.selectedSegmentIndex, otherRatioT)
+                                else:
+                                    with self.glyph.undo():
+                                        self.playPointAnimation(self.point,5)
+                                        self.playPointAnimation(self.point,8)
+                                        self.selectedSegmentIndex = contour.selectedSegments[0].index
+                                        contour.naked().splitAndInsertPointAtSegmentAndT(self.selectedSegmentIndex, self.percent)
 
 
 
@@ -598,9 +609,8 @@ class BezierSurgeon(EditingTool):
         self.closeWindow(None)
 
     def dragSelection(self, point, delta):
-        if self.getValues(None,self.segmentPoints,self.percent):
-            return
-        super().dragSelection(point, delta)      
+        if not self.segmentPoints:
+            super().dragSelection(point, delta)      
 
     def getToolbarTip(self):
         return "Bezier Surgeon"
