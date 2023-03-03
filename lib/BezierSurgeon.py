@@ -1,21 +1,18 @@
 import AppKit
-from defcon import Contour, Font
-from defconAppKit.windows.baseWindow import BaseWindowController
 from fontParts.fontshell import RBPoint
 from fontTools.misc import bezierTools as bT
 from lib.tools.notifications import PostNotification
 from merz.tools.drawingTools import NSImageDrawingTools
 import math
 import merz
-from mojo.UI import PostBannerNotification, getDefault, setDefault, CurrentGlyphWindow, UpdateCurrentGlyphView, getGlyphViewDisplaySettings, setGlyphViewDisplaySettings, preferencesChanged
-from mojo.events import addObserver, removeObserver, EditingTool, installTool, BaseEventTool
-from mojo.subscriber import Subscriber, WindowController, registerCurrentGlyphSubscriber
-from vanilla import HUDFloatingWindow, Slider, SquareButton,Group
+from mojo.UI import PostBannerNotification, getDefault, setDefault, UpdateCurrentGlyphView, getGlyphViewDisplaySettings, setGlyphViewDisplaySettings, preferencesChanged
+from mojo.events import EditingTool, installTool
+from mojo.subscriber import Subscriber, registerCurrentGlyphSubscriber
 
 
 '''
 to do:
-- fix handle drawing
+- fix point drawing, currently the stroke looks weird
 - add support for quadratic curves
 '''
 
@@ -26,7 +23,7 @@ How to use:
 BezierSurgeon is a tool to insert points along [cubic] curves at a 
 specified angle and/or ratio. To use it, select the tool from the toolbar
 at the top of the glyphView. Select a curve and hold down ⇧ shift key and drag
-around the width of the contour to control the point position. BS has three functions
+around the width of the contour to control the point position. BezierSurgeon has three functions
 for point insertion, CurrentGlyph only - "C", AllFonts at specified Ratio - "R", and AllFonts at
 what ever is possible - "A". The latter checks if it is possible to insert the point at the same
 angle in all compatible fonts but if not it will attempt to insert it at the ratio.
