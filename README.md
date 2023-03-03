@@ -15,3 +15,6 @@ BezierSurgeon uses the same math, to calculate the angle and ratio, as [Erik van
 Requires RoboFont 4.1
 
 ![](./images/BezierSurgeon.gif)
+
+
+Thanks to Tal, Erik, Frederik, Gustavo, Bahman, and Jens!
