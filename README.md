@@ -6,5 +6,5 @@ Do you ever find your self needing to add a point at an exact angle/ratio for a 
 
 ![](./images/demo.gif)
 
-Thanks to Tal, Erik, Frederik, Gustavo, Bahman, and Jens!
+Thanks to Tal, Erik, Frederik, DJR, Gustavo, Bahman, and Jens!
 
