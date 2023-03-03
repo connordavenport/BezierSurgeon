@@ -12,7 +12,7 @@ libPath = os.path.join(basePath, "lib")
 B = ExtensionBundle()
 
 B.name = "Bezier Surgeon"
-B.version = "0.201"
+B.version = "2.002"
 B.developer = "Connor Davenport"
 B.developerURL = 'http://www.connordavenport.com/'
 B.mainScript = "BezierSurgeon.py"
@@ -24,7 +24,7 @@ B.addToMenu = [
         'shortKey' : '',
     }]
     
-B.requiresVersionMajor = '3'
+B.requiresVersionMajor = '4'
 B.requiresVersionMinor = '1'
 # B.infoDictionary["html"] = True
 

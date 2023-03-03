@@ -24,12 +24,12 @@
 	<key>name</key>
 	<string>Bezier Surgeon</string>
 	<key>requiresVersionMajor</key>
-	<string>3</string>
+	<string>4</string>
 	<key>requiresVersionMinor</key>
 	<string>1</string>
 	<key>timeStamp</key>
-	<real>1584669671.074018</real>
+	<real>1677872994.688159</real>
 	<key>version</key>
-	<string>0.201</string>
+	<string>2.002</string>
 </dict>
 </plist>
