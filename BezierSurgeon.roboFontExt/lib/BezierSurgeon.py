@@ -8,7 +8,7 @@ import merz
 from mojo.UI import PostBannerNotification, getDefault, setDefault, UpdateCurrentGlyphView, getGlyphViewDisplaySettings, setGlyphViewDisplaySettings, preferencesChanged
 from mojo.events import EditingTool, installTool
 from mojo.subscriber import Subscriber, registerCurrentGlyphSubscriber
-
+from mojo.roboFont import version
 
 '''
 to do:
@@ -35,6 +35,11 @@ toolbarIcon = AppKit.NSImage.alloc().initByReferencingFile_("SurgeonIcon.pdf")
 toolbarIcon.setTemplate_(True)
 
 
+if version >= "4.4": # syntax change for glyphViewOnCurvePointsSize
+    gvOCPS = "glyphViewOnCurvePointsSize"
+else:
+    gvOCPS = "glyphViewOncurvePointsSize"
+        
 class BezierSurgeon(EditingTool):
 
     debug = True
@@ -58,8 +63,8 @@ class BezierSurgeon(EditingTool):
             self.mode = "light"
             self.suffix = ""
             
-        self.onCurveSize = getDefault("glyphViewOncurvePointsSize") * 2.2
-        self.offCurveSize = getDefault("glyphViewOncurvePointsSize") * 2
+        self.onCurveSize = getDefault(gvOCPS) * 2.2
+        self.offCurveSize = getDefault("glyphViewOnCurvePointsSize") * 2
         self.onCurveFill = self.getModeColor("glyphViewCurvePointsFill",self.suffix)
         self.onCurveStroke = self.getModeColor("glyphViewSmoothPointStroke",self.suffix)
         self.offCurveFill = self.getModeColor("glyphViewOffCurvePointsFill",self.suffix)
