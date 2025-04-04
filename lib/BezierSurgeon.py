@@ -69,7 +69,7 @@ class BezierSurgeon(EditingTool):
         self.onCurveStroke = self.getModeColor("glyphViewSmoothPointStroke",self.suffix)
         self.offCurveFill = self.getModeColor("glyphViewOffCurvePointsFill",self.suffix)
         self.offCurveStroke = self.getModeColor("glyphViewOffCurveCubicPointsStroke",self.suffix)
-        self.handleStroke = list(self.getModeColor("glyphViewHandlesStrokeColor",self.suffix))
+        self.handleStroke = list(self.getModeColor("glyphViewCubicHandlesStrokeColor",self.suffix))
         self.handleStroke[3] = .8
         self.handleStroke = tuple(self.handleStroke)
         self.handleWidth = getDefault("glyphViewHandlesStrokeWidth") * .4

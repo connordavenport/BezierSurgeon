@@ -1,0 +1,13 @@
+name: Validate and Build the Extension
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  validate_and_build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate and Build
+        uses: connordavenport/roboFont-Extension-action@v0.1.0
+        with:
+          autotagging: true  # set to false by default
