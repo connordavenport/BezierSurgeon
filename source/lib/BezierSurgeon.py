@@ -5,10 +5,12 @@ from lib.tools.notifications import PostNotification
 from merz.tools.drawingTools import NSImageDrawingTools
 import math
 import merz
-from mojo.UI import PostBannerNotification, getDefault, setDefault, UpdateCurrentGlyphView, getGlyphViewDisplaySettings, setGlyphViewDisplaySettings, preferencesChanged
+from mojo.UI import PostBannerNotification, getDefault, setDefault, UpdateCurrentGlyphView, getGlyphViewDisplaySettings, setGlyphViewDisplaySettings, preferencesChanged, inDarkMode
 from mojo.events import EditingTool, installTool
 from mojo.subscriber import Subscriber, registerCurrentGlyphSubscriber
 from mojo.roboFont import version
+from mojo.extensions import ExtensionBundle
+import os
 
 '''
 to do:
@@ -30,8 +32,15 @@ angle in all compatible fonts but if not it will attempt to insert it at the rat
 
 '''
 
+bezierSurgeonBundle = ExtensionBundle("BezierSurgeon")
+resourcesPath = bezierSurgeonBundle.resourcesPath()
+icon = os.path.join(resourcesPath, "SurgeonIcon.pdf")
+if os.path.exists(icon): # make sure bundle has pdf path
+    path = icon
+else: # if bundle doesnt exist for some reason
+    path = os.path.join(os.path.dirname(__file__), "..", "resources", "SurgeonIcon.pdf")
 
-toolbarIcon = AppKit.NSImage.alloc().initByReferencingFile_("SurgeonIcon.pdf")
+toolbarIcon = AppKit.NSImage.alloc().initByReferencingFile_(path)
 toolbarIcon.setTemplate_(True)
 
 
@@ -56,15 +65,15 @@ class BezierSurgeon(EditingTool):
         self.point = None
         self.duration = .8
         self.upmScale = None
-        if AppKit.NSApp().appearance() == AppKit.NSAppearance.appearanceNamed_(AppKit.NSAppearanceNameDarkAqua):
+        if inDarkMode():
             self.mode = "dark"
             self.suffix = ".dark"
         else:
             self.mode = "light"
             self.suffix = ""
             
-        self.onCurveSize = getDefault(gvOCPS) * 2.2
-        self.offCurveSize = getDefault("glyphViewOnCurvePointsSize") * 2
+        self.onCurveSize = getDefault(gvOCPS)
+        self.offCurveSize = getDefault("glyphViewOnCurvePointsSize")
         self.onCurveFill = self.getModeColor("glyphViewCurvePointsFill",self.suffix)
         self.onCurveStroke = self.getModeColor("glyphViewSmoothPointStroke",self.suffix)
         self.offCurveFill = self.getModeColor("glyphViewOffCurvePointsFill",self.suffix)
