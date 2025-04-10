@@ -2,11 +2,9 @@ name: BezierSurgeon
 developer: Connor Davenport
 developerURL: http://connordavenport.com
 launchAtStartUp: true
-version: '2.1.0'
-addToMenu:
-- path: BezierSurgeon.py
-  preferredName: Bezier Surgeon
-  shortKey: ''
+version: '2.1.1'
+mainScript: BezierSurgeon.py
+addToMenu: []
 html: false
 requiresVersionMajor: '4'
 requiresVersionMinor: '2'
